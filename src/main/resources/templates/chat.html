@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Repo Intel Chat</title>
+    <style>
+        body { font-family: system-ui, Arial, sans-serif; margin: 2rem; background:#f5f7fa; }
+        h1 { margin-top:0; }
+        form { display:flex; gap:.5rem; margin-bottom:1rem; }
+        input[type=text] { flex:1; padding:.6rem .8rem; border:1px solid #b5c1cc; border-radius:4px; }
+        button { padding:.65rem 1.1rem; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+        button:hover { background:#1d4ed8; }
+        .panel { background:#fff; border:1px solid #d0d7de; border-radius:6px; padding:1rem 1.25rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+        .meta { font-size:.8rem; color:#555; margin-top:.5rem; }
+        pre { background:#0f172a; color:#e2e8f0; padding:.75rem; border-radius:4px; overflow:auto; }
+        table { border-collapse: collapse; margin-top:.5rem; }
+        td, th { border:1px solid #ccc; padding:.25rem .5rem; font-size:.85rem; }
+        .intent { display:inline-block; padding:.15rem .45rem; border-radius:12px; font-size:.65rem; font-weight:600; background:#e0f2fe; color:#0369a1; }
+        .link a { font-size:.8rem; }
+    </style>
+</head>
+<body>
+<h1>Repository Intelligence Chat</h1>
+<div style="background:#fffbeb; border:1px solid #fbbf24; padding:1rem; border-radius:4px; margin-bottom:1rem;">
+    <strong>💡 Getting Started:</strong> First scan some repositories to populate the database.
+    <a href="/scan" style="color:#2563eb; text-decoration:underline;">Go to Scan Page</a> or use the API:
+    <code style="background:#f3f4f6; padding:0.2rem 0.4rem; border-radius:3px;">POST /api/scan</code>
+</div>
+<form method="post" action="/chat">
+    <input type="text" name="query" placeholder="Ask e.g. group:artifact below 1.2.0 or just a keyword" th:value="${query}" required />
+    <button type="submit">Ask</button>
+</form>
+<div th:if="${response}" class="panel">
+    <div><span class="intent" th:text="${response.intent}"></span></div>
+    <h3 th:text="${response.summary}"></h3>
+    <div class="link" th:if="${response.link}"><a th:href="${response.link}" target="_blank" rel="noopener">Open related endpoint</a></div>
+    <div class="meta">Answer generated from API data.</div>
+    <div th:if="${dataJson}">
+        <pre th:text="${dataJson}"></pre>
+    </div>
+</div>
+</body>
+</html>

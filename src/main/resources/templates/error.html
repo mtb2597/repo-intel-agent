@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Error</title>
+    <style>body{font-family:system-ui,Arial,sans-serif;margin:2rem;} .box{background:#fee2e2;border:1px solid #ef4444;padding:1rem;border-radius:6px;} a{color:#2563eb;}</style>
+</head>
+<body>
+<h1>Something went wrong</h1>
+<div class="box">
+    <p th:if="${status}">Status: <span th:text="${status}"></span></p>
+    <p th:if="${error}">Error: <span th:text="${error}"></span></p>
+    <p th:if="${message}">Message: <span th:text="${message}"></span></p>
+    <p th:if="${path}">Path: <code th:text="${path}"></code></p>
+</div>
+<p><a href="/chat">Return to Chat</a></p>
+</body>
+</html>
+

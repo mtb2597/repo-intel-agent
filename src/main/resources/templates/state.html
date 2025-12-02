@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>System State - Repo Intel</title>
+    <style>
+        body { font-family: system-ui, Arial, sans-serif; margin: 2rem; background:#f5f7fa; }
+        h1, h2 { margin-top:0; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .panel { background:#fff; border:1px solid #d0d7de; border-radius:6px; padding:1.5rem; box-shadow:0 1px 2px rgba(0,0,0,.04); margin-bottom:1rem; }
+        .nav { margin-bottom:1rem; }
+        .nav a { color:#2563eb; text-decoration:none; margin-right:1rem; }
+        .nav a:hover { text-decoration:underline; }
+        .stat { display:inline-block; margin:0.5rem 1rem 0.5rem 0; padding:0.5rem 1rem; background:#e0f2fe; border-radius:4px; }
+        .stat strong { font-size:1.5rem; color:#0369a1; }
+        .repo-list { list-style:none; padding:0; }
+        .repo-list li { padding:0.5rem; border-bottom:1px solid #e5e7eb; }
+        .repo-list li:last-child { border-bottom:none; }
+        .empty { color:#6b7280; font-style:italic; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/chat">Chat</a>
+        <a href="/scan">Scan Repos</a>
+        <a href="/state">← View State</a>
+    </div>
+
+    <h1>System State</h1>
+
+    <div class="panel">
+        <h2>Statistics</h2>
+        <div class="stat">
+            <div>Repositories Scanned</div>
+            <strong th:text="${repoCount}">0</strong>
+        </div>
+    </div>
+
+    <div class="panel">
+        <h2>Scanned Repositories</h2>
+        <div th:if="${repoCount == 0}" class="empty">
+            No repositories have been scanned yet. <a href="/scan">Scan some repositories</a> to get started.
+        </div>
+        <ul class="repo-list" th:if="${repoCount > 0}">
+            <li th:each="name : ${repoNames}" th:text="${name}"></li>
+        </ul>
+    </div>
+
+    <div class="panel">
+        <h2>Actions</h2>
+        <p><a href="/scan">Scan New Repositories</a></p>
+        <p><a href="/chat">Ask Questions About Dependencies</a></p>
+        <p><a href="/api/state">View API State (JSON)</a></p>
+    </div>
+</div>
+</body>
+</html>
+
