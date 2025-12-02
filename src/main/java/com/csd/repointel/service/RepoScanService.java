@@ -3,25 +3,17 @@ package com.csd.repointel.service;
 import com.csd.repointel.model.DependencyInfo;
 import com.csd.repointel.model.RepoScanResult;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.CloneCommand;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.springframework.stereotype.Service;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -233,99 +225,6 @@ public class RepoScanService {
                 .build();
     }
 
-    private List<DependencyInfo> parseDependencies(Path repoDir) {
-        List<DependencyInfo> list = new ArrayList<>();
-        Map<String, String> globalProperties = new HashMap<>();
-        List<Model> allModels = new ArrayList<>();
-        try (var stream = Files.walk(repoDir)) {
-            // Find all pom.xml files, excluding build directories
-            List<Path> poms = stream
-                    .filter(p -> p.getFileName().toString().equals("pom.xml"))
-                    .filter(p -> !p.toString().contains("target" + File.separator))  // Skip Maven build output
-                    .filter(p -> !p.toString().contains(File.separator + ".git" + File.separator))  // Skip .git directory
-                    .filter(p -> !p.toString().contains("node_modules" + File.separator))  // Skip npm packages
-                    .filter(p -> !p.toString().contains(File.separator + ".idea" + File.separator))  // Skip IDE files
-                    .collect(Collectors.toList());
-
-            log.info("Found {} pom.xml file(s) in repository", poms.size());
-
-            MavenXpp3Reader reader = new MavenXpp3Reader();
-            int totalDeps = 0;
-            Set<String> seen = new HashSet<>();  // Track unique dependencies across modules
-
-            // First pass: collect all properties from all poms
-            for (Path pom : poms) {
-                try (FileInputStream fis = new FileInputStream(pom.toFile())) {
-                    Model model = reader.read(fis);
-                    model.setPomFile(pom.toFile());
-                    allModels.add(model);
-                    if (model.getProperties() != null) {
-                        for (String propName : model.getProperties().stringPropertyNames()) {
-                            globalProperties.putIfAbsent(propName, model.getProperties().getProperty(propName));
-                        }
-                    }
-                } catch (IOException | XmlPullParserException e) {
-                    log.error("Failed to parse pom {}: {}", pom, e.getMessage(), e);
-                }
-            }
-
-            log.info("Global properties collected from all poms: {}", globalProperties);
-
-            // Second pass: extract dependencies with global property fallback
-            for (Model model : allModels) {
-                Path pom = model.getPomFile() != null ? model.getPomFile().toPath() : null;
-                // Log all properties found in this pom.xml
-                if (model.getProperties() != null && !model.getProperties().isEmpty()) {
-                    log.info("Properties in {}: {}", pom, model.getProperties());
-                } else {
-                    log.info("No properties found in {}", pom);
-                }
-
-                int depCount = 0;
-                if (model.getDependencies() != null && !model.getDependencies().isEmpty()) {
-                    for (Dependency d : model.getDependencies()) {
-                        // Resolve groupId, artifactId, and version for property references
-                        String resolvedGroupId = resolvePropertyRecursiveWithGlobal(model, d.getGroupId(), new HashSet<>(), globalProperties);
-                        String resolvedArtifactId = resolvePropertyRecursiveWithGlobal(model, d.getArtifactId(), new HashSet<>(), globalProperties);
-                        String resolvedVersion = resolveVersionWithGlobal(d, model, globalProperties);
-                        String scope = d.getScope();
-                        String key = resolvedGroupId + ":" + resolvedArtifactId + ":" +
-                                    (resolvedVersion == null ? "" : resolvedVersion) + ":" +
-                                    (scope == null ? "" : scope);
-
-                        if (seen.add(key)) {  // Only add if not seen before
-                            list.add(DependencyInfo.builder()
-                                    .groupId(resolvedGroupId)
-                                    .artifactId(resolvedArtifactId)
-                                    .version(resolvedVersion)
-                                    .scope(scope)
-                                    .build());
-                            depCount++;
-                            if (resolvedVersion != null && resolvedVersion.matches("\\$\\{.+}")) {
-                                log.warn("Unresolved property for dependency version: {}:{} version={} in {}. Available properties: {}", resolvedGroupId, resolvedArtifactId, resolvedVersion, pom, model.getProperties());
-                            }
-                        }
-                    }
-                    totalDeps += depCount;
-                }
-
-                // Log each pom.xml file processed
-                String relativePath = pom != null ? repoDir.relativize(pom).toString() : "unknown";
-                if (depCount > 0) {
-                    log.info("Extracted {} unique dependencies from {}", depCount, relativePath);
-                } else {
-                    log.debug("No new dependencies found in {} (parent POM or duplicates)", relativePath);
-                }
-            }
-
-            log.info("Total unique dependencies extracted: {} from {} pom.xml files", totalDeps, poms.size());
-
-        } catch (IOException e) {
-            log.error("Failed to walk repository directory", e);
-        }
-        return list;
-    }
-
     // Helper: resolve property with global fallback
     private static String resolvePropertyRecursiveWithGlobal(Model model, String value, Set<String> seenProps, Map<String, String> globalProperties) {
         if (value == null) return null;
@@ -399,57 +298,6 @@ public class RepoScanService {
             }
         }
         return result;
-    }
-
-    // Helper: resolve version with global fallback
-    private static String resolveVersionWithGlobal(Dependency d, Model model, Map<String, String> globalProperties) {
-        String version = d.getVersion();
-        if (version != null) {
-            version = resolvePropertyRecursiveWithGlobal(model, version, new HashSet<>(), globalProperties);
-        }
-        // If still null/blank, check dependencyManagement
-        if ((version == null || version.isBlank()) && model.getDependencyManagement() != null) {
-            for (Dependency dmDep : model.getDependencyManagement().getDependencies()) {
-                if (Objects.equals(dmDep.getGroupId(), d.getGroupId()) &&
-                    Objects.equals(dmDep.getArtifactId(), d.getArtifactId())) {
-                    String dmVersion = dmDep.getVersion();
-                    if (dmVersion != null) {
-                        dmVersion = resolvePropertyRecursiveWithGlobal(model, dmVersion, new HashSet<>(), globalProperties);
-                    }
-                    version = dmVersion;
-                    break;
-                }
-            }
-        }
-        return version;
-    }
-
-    /**
-     * Resolve dependency version considering property placeholders, nested properties, and dependencyManagement.
-     * Handles cycles and nested property references.
-     */
-    private String resolveVersion(Dependency d, Model model) {
-        String version = d.getVersion();
-        if (version != null) {
-            version = resolvePropertyRecursive(model, version, new HashSet<>());
-        }
-
-        // If still null/blank, check dependencyManagement
-        if ((version == null || version.isBlank()) && model.getDependencyManagement() != null) {
-            for (Dependency dmDep : model.getDependencyManagement().getDependencies()) {
-                if (Objects.equals(dmDep.getGroupId(), d.getGroupId()) &&
-                    Objects.equals(dmDep.getArtifactId(), d.getArtifactId())) {
-                    String dmVersion = dmDep.getVersion();
-                    if (dmVersion != null) {
-                        dmVersion = resolvePropertyRecursive(model, dmVersion, new HashSet<>());
-                    }
-                    version = dmVersion;
-                    break;
-                }
-            }
-        }
-
-        return version;  // May still be null if unresolved
     }
 
     /**
@@ -550,95 +398,5 @@ public class RepoScanService {
         return trimmed.substring(idx);
     }
 
-    /**
-     * Detect JDK version from pom.xml files in the repository.
-     * Aggregates all candidates from maven.compiler.source, maven.compiler.release, or java.version properties
-     * across all pom.xml files and chooses the highest version.
-     */
-    private String detectJdkVersion(Path repoDir) {
-        try (var stream = Files.walk(repoDir)) {
-            List<Path> poms = stream
-                    .filter(p -> p.getFileName().toString().equals("pom.xml"))
-                    .filter(p -> !p.toString().contains("target" + File.separator))
-                    .filter(p -> !p.toString().contains(File.separator + ".git" + File.separator))
-                    .collect(Collectors.toList());
-
-            MavenXpp3Reader reader = new MavenXpp3Reader();
-            Set<String> candidates = new HashSet<>();
-
-            // Collect all JDK version candidates from all pom.xml files
-            for (Path pom : poms) {
-                try (FileInputStream fis = new FileInputStream(pom.toFile())) {
-                    Model model = reader.read(fis);
-
-                    if (model.getProperties() != null) {
-                        java.util.Properties props = model.getProperties();
-
-                        // Check maven.compiler.source (most common)
-                        if (props.containsKey("maven.compiler.source")) {
-                            String version = props.getProperty("maven.compiler.source");
-                            if (version != null && !version.isBlank()) {
-                                candidates.add(version);
-                            }
-                        }
-
-                        // Check maven.compiler.release (preferred in newer Maven)
-                        if (props.containsKey("maven.compiler.release")) {
-                            String version = props.getProperty("maven.compiler.release");
-                            if (version != null && !version.isBlank()) {
-                                candidates.add(version);
-                            }
-                        }
-
-                        // Check java.version
-                        if (props.containsKey("java.version")) {
-                            String version = props.getProperty("java.version");
-                            if (version != null && !version.isBlank()) {
-                                candidates.add(version);
-                            }
-                        }
-                    }
-
-                } catch (IOException | XmlPullParserException e) {
-                    log.debug("Failed to parse {} for JDK version: {}", pom, e.getMessage());
-                }
-            }
-
-            if (candidates.isEmpty()) {
-                return "Not specified";
-            }
-
-            // Choose the highest version among all candidates
-            String best = null;
-            for (String candidate : candidates) {
-                if (candidate == null || candidate.isBlank()) continue;
-
-                if (best == null) {
-                    best = candidate;
-                    continue;
-                }
-
-                try {
-                    // Use VersionUtil for numeric/semver comparison
-                    if (VersionUtil.compare(candidate, best) > 0) {
-                        best = candidate;
-                    }
-                } catch (Exception ex) {
-                    // Fallback to lexical comparison if version parsing fails
-                    if (candidate.compareTo(best) > 0) {
-                        best = candidate;
-                    }
-                }
-            }
-
-            log.info("Detected JDK version: {} (from {} candidates across {} pom files)",
-                     best, candidates.size(), poms.size());
-            return best;
-
-        } catch (IOException e) {
-            log.error("Failed to detect JDK version", e);
-            return "Unknown";
-        }
-    }
 }
 
