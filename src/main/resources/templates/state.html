@@ -3,34 +3,184 @@
 <head>
     <meta charset="UTF-8" />
     <title>System State - Repo Intel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: system-ui, Arial, sans-serif; margin: 2rem; background:#f5f7fa; }
-        h1, h2 { margin-top:0; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .panel { background:#fff; border:1px solid #d0d7de; border-radius:6px; padding:1.5rem; box-shadow:0 1px 2px rgba(0,0,0,.04); margin-bottom:1rem; }
-        .nav { margin-bottom:1rem; }
-        .nav a { color:#2563eb; text-decoration:none; margin-right:1rem; }
-        .nav a:hover { text-decoration:underline; }
-        .stat { display:inline-block; margin:0.5rem 1rem 0.5rem 0; padding:0.5rem 1rem; background:#e0f2fe; border-radius:4px; }
-        .stat strong { font-size:1.5rem; color:#0369a1; }
-        .repo-list { list-style:none; padding:0; }
-        .repo-list li { padding:0.5rem; border-bottom:1px solid #e5e7eb; }
-        .repo-list li:last-child { border-bottom:none; }
-        .empty { color:#6b7280; font-style:italic; }
+        body {
+            background-color: #f5f7fa;
+            font-family: system-ui, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header-section {
+            background: #2563eb;
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .panel h2 {
+            margin-top: 0;
+            color: #1f2937;
+            font-size: 1.5rem;
+        }
+        .stat {
+            display: inline-block;
+            margin: 0.75rem 1.5rem 0.75rem 0;
+            padding: 1.25rem 1.75rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .stat div {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat strong {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+            margin-top: 0.25rem;
+        }
+        .repo-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .repo-list li {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .repo-list li:hover {
+            background: #f9fafb;
+        }
+        .repo-list li:last-child {
+            border-bottom: none;
+        }
+        .repo-list li i {
+            margin-right: 0.75rem;
+            color: #2563eb;
+        }
+        .empty {
+            color: #6b7280;
+            font-style: italic;
+            padding: 2rem;
+            text-align: center;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .action-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .action-links a {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .action-links a:hover {
+            background: #2563eb;
+            color: white;
+            transform: translateX(5px);
+        }
+        .action-links a i {
+            margin-right: 0.75rem;
+            font-size: 1.25rem;
+        }
+        .top-nav {
+            background: #1f2937;
+            padding: 0;
+            margin: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .top-nav .container-fluid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+        .brand {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .nav-menu a {
+            color: #9ca3af;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-menu a:hover {
+            background: #374151;
+            color: white;
+        }
+        .nav-menu a.active {
+            background: #2563eb;
+            color: white;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="nav">
-        <a href="/chat">Chat</a>
-        <a href="/scan">Scan Repos</a>
-        <a href="/state">← View State</a>
+    <nav class="top-nav">
+        <div class="container-fluid">
+            <a href="/" class="brand">
+                <i class="fas fa-code-branch"></i>
+                <span>Repo Intelligence Agent</span>
+            </a>
+            <div class="nav-menu">
+                <a href="/chat"><i class="fas fa-comments"></i> Chat</a>
+                <a href="/scan"><i class="fas fa-radar"></i> Scan</a>
+                <a href="/state" class="active"><i class="fas fa-chart-bar"></i> State</a>
+                <a href="/vulnerabilities"><i class="fas fa-shield-alt"></i> Vulnerabilities</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="header-section">
+        <div style="padding: 0 2rem;">
+            <h1 style="margin:0; font-size: 2rem;"><i class="fas fa-chart-bar"></i> System State</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">Overview of scanned repositories and system statistics</p>
+        </div>
     </div>
 
-    <h1>System State</h1>
-
     <div class="panel">
-        <h2>Statistics</h2>
+        <h2><i class="fas fa-chart-pie"></i> Statistics</h2>
         <div class="stat">
             <div>Repositories Scanned</div>
             <strong th:text="${repoCount}">0</strong>
@@ -38,22 +188,43 @@
     </div>
 
     <div class="panel">
-        <h2>Scanned Repositories</h2>
+        <h2><i class="fas fa-folder-open"></i> Scanned Repositories</h2>
         <div th:if="${repoCount == 0}" class="empty">
-            No repositories have been scanned yet. <a href="/scan">Scan some repositories</a> to get started.
+            <i class="fas fa-inbox" style="font-size: 3rem; opacity: 0.3; margin-bottom: 1rem;"></i>
+            <p>No repositories have been scanned yet.</p>
+            <a href="/scan" style="color:#2563eb; font-weight:600;">Scan some repositories</a> to get started.
         </div>
         <ul class="repo-list" th:if="${repoCount > 0}">
-            <li th:each="name : ${repoNames}" th:text="${name}"></li>
+            <li th:each="name : ${repoNames}">
+                <i class="fas fa-code-branch"></i>
+                <span th:text="${name}"></span>
+            </li>
         </ul>
     </div>
 
     <div class="panel">
-        <h2>Actions</h2>
-        <p><a href="/scan">Scan New Repositories</a></p>
-        <p><a href="/chat">Ask Questions About Dependencies</a></p>
-        <p><a href="/api/state">View API State (JSON)</a></p>
+        <h2><i class="fas fa-tools"></i> Quick Actions</h2>
+        <div class="action-links">
+            <a href="/scan">
+                <i class="fas fa-radar"></i>
+                <span>Scan New Repositories</span>
+            </a>
+            <a href="/chat">
+                <i class="fas fa-comments"></i>
+                <span>Ask Questions About Dependencies</span>
+            </a>
+            <a href="/vulnerabilities">
+                <i class="fas fa-shield-alt"></i>
+                <span>View Vulnerability Dashboard</span>
+            </a>
+            <a href="/api/state" target="_blank">
+                <i class="fas fa-code"></i>
+                <span>View API State (JSON)</span>
+            </a>
+        </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 

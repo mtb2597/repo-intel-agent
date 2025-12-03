@@ -3,43 +3,180 @@
 <head>
     <meta charset="UTF-8" />
     <title>Scan Repositories - Repo Intel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: system-ui, Arial, sans-serif; margin: 2rem; background:#f5f7fa; }
-        h1 { margin-top:0; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .panel { background:#fff; border:1px solid #d0d7de; border-radius:6px; padding:1.5rem; box-shadow:0 1px 2px rgba(0,0,0,.04); margin-bottom:1rem; }
-        textarea { width:100%; padding:.6rem; border:1px solid #b5c1cc; border-radius:4px; font-family:monospace; font-size:0.9rem; }
-        button { padding:.65rem 1.1rem; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-top:0.5rem; }
-        button:hover { background:#1d4ed8; }
-        .success { background:#d1fae5; border:1px solid #10b981; padding:1rem; border-radius:4px; margin-top:1rem; }
-        .error { background:#fee2e2; border:1px solid #ef4444; padding:1rem; border-radius:4px; margin-top:1rem; }
-        .nav { margin-bottom:1rem; }
-        .nav a { color:#2563eb; text-decoration:none; margin-right:1rem; }
-        .nav a:hover { text-decoration:underline; }
-        .example { background:#f3f4f6; padding:0.75rem; border-radius:4px; margin:0.5rem 0; font-family:monospace; font-size:0.85rem; }
-        pre { background:#0f172a; color:#e2e8f0; padding:.75rem; border-radius:4px; overflow:auto; font-size:0.85rem; }
+        body {
+            background-color: #f5f7fa;
+            font-family: system-ui, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header-section {
+            background: #2563eb;
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .panel h3 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        textarea {
+            width: 100%;
+            padding: .8rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        button {
+            padding: .75rem 1.5rem;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+        .success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+        .error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-top: 1rem;
+        }
+        .example {
+            background: #f3f4f6;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow: auto;
+            font-size: 0.85rem;
+        }
+        .alert-info {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .top-nav {
+            background: #1f2937;
+            padding: 0;
+            margin: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .top-nav .container-fluid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+        .brand {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .nav-menu a {
+            color: #9ca3af;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-menu a:hover {
+            background: #374151;
+            color: white;
+        }
+        .nav-menu a.active {
+            background: #2563eb;
+            color: white;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="nav">
-        <a href="/chat">← Back to Chat</a>
-        <a href="/scan">Scan Repos</a>
-        <a href="/state">View State</a>
+    <nav class="top-nav">
+        <div class="container-fluid">
+            <a href="/" class="brand">
+                <i class="fas fa-code-branch"></i>
+                <span>Repo Intelligence Agent</span>
+            </a>
+            <div class="nav-menu">
+                <a href="/chat"><i class="fas fa-comments"></i> Chat</a>
+                <a href="/scan" class="active"><i class="fas fa-radar"></i> Scan</a>
+                <a href="/state"><i class="fas fa-chart-bar"></i> State</a>
+                <a href="/vulnerabilities"><i class="fas fa-shield-alt"></i> Vulnerabilities</a>
+            </div>
+        </div>
+    </nav>
+
+<div class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1rem;">
+    <div class="header-section">
+        <div style="padding: 0 2rem;">
+            <h1 style="margin:0; font-size: 2rem;"><i class="fas fa-radar"></i> Scan Repositories</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">Discover and analyze Maven dependencies across your repositories</p>
+        </div>
     </div>
 
-    <h1>Scan Repositories</h1>
-
     <div class="panel">
-        <h3>Add Repository URLs to Scan</h3>
+        <h3><i class="fas fa-plus-circle"></i> Add Repository URLs to Scan</h3>
         <p>Enter one or more Git repository URLs (one per line):</p>
-        <div style="background:#fef3c7; border:1px solid #f59e0b; padding:0.75rem; border-radius:4px; font-size:0.9rem; margin-bottom:0.75rem;">
-            <strong>💡 Private Repos:</strong> Use HTTPS format with token:
+        <div class="alert-info">
+            <strong><i class="fas fa-lightbulb"></i> Private Repos:</strong> Use HTTPS format with token:
             <code>https://TOKEN@github.com/user/repo.git</code>
             <a href="/help/private-repos" style="color:#2563eb; margin-left:0.5rem;">Need help?</a>
         </div>
-        <div style="background:#fee2e2; border:1px solid #ef4444; padding:0.75rem; border-radius:4px; font-size:0.85rem; margin-bottom:0.75rem;">
-            <strong>⚠️ Common Mistake:</strong><br/>
+        <div class="alert-warning">
+            <strong><i class="fas fa-exclamation-triangle"></i> Common Mistake:</strong><br/>
             ❌ <code>https://github.com/user/repo.git</code> ← Missing token (will fail for private repos)<br/>
             ✅ <code>https://YOUR_TOKEN@github.com/user/repo.git</code> ← Correct format<br/>
             <strong>Every private repo URL needs the token!</strong>
@@ -47,10 +184,10 @@
 
         <form method="post" action="/scan">
             <textarea name="repos" rows="10" placeholder="https://github.com/spring-projects/spring-boot&#10;https://github.com/apache/maven&#10;https://github.com/junit-team/junit5"></textarea>
-            <button type="submit">Scan Repositories</button>
+            <button type="submit"><i class="fas fa-search"></i> Scan Repositories</button>
         </form>
 
-        <h4>Examples:</h4>
+        <h4 style="margin-top: 2rem;"><i class="fas fa-code-branch"></i> Examples:</h4>
         <div class="example">https://github.com/spring-projects/spring-boot</div>
         <div class="example">https://github.com/apache/maven</div>
         <div class="example">https://github.com/junit-team/junit5</div>
@@ -60,21 +197,22 @@
     <div th:if="${error}" class="error" th:text="${error}"></div>
 
     <div th:if="${results}" class="panel">
-        <h3>Scan Results</h3>
+        <h3><i class="fas fa-check-circle"></i> Scan Results</h3>
         <pre th:text="${results}"></pre>
     </div>
 
     <div class="panel">
-        <h3>Current State</h3>
+        <h3><i class="fas fa-database"></i> Current State</h3>
         <p>Repositories scanned: <strong th:text="${repoCount}">0</strong></p>
         <div th:if="${repoNames}">
-            <p>Repository names:</p>
-            <ul>
+            <p><strong>Repository names:</strong></p>
+            <ul style="margin: 0; padding-left: 1.5rem;">
                 <li th:each="name : ${repoNames}" th:text="${name}"></li>
             </ul>
         </div>
     </div>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 

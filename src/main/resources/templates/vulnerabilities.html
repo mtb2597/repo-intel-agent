@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Vulnerability Detection - Repo Intelligence Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f5f7fa;
+            font-family: system-ui, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header-section {
+            background: #2563eb;
+            color: white;
+            padding: 30px 0;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        .repo-card {
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+        }
+        .badge-critical { background-color: #dc3545; }
+        .badge-high { background-color: #fd7e14; }
+        .badge-medium { background-color: #ffc107; color: #000; }
+        .badge-low { background-color: #17a2b8; }
+        .badge-safe { background-color: #28a745; }
+        .risk-meter {
+            height: 30px;
+            border-radius: 15px;
+            background: linear-gradient(to right, #28a745, #ffc107, #fd7e14, #dc3545);
+            position: relative;
+            margin: 10px 0;
+        }
+        .risk-indicator {
+            position: absolute;
+            top: -5px;
+            width: 20px;
+            height: 40px;
+            background: #000;
+            border-radius: 4px;
+            transition: left 0.3s;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        .export-buttons {
+            margin-top: 20px;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #667eea;
+            color: white;
+        }
+        .top-nav {
+            background: #1f2937;
+            padding: 0;
+            margin: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .top-nav .container-fluid {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+        .brand {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .nav-menu {
+            display: flex;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .nav-menu a {
+            color: #9ca3af;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-menu a:hover {
+            background: #374151;
+            color: white;
+        }
+        .nav-menu a.active {
+            background: #2563eb;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="container-fluid">
+            <a href="/" class="brand">
+                <i class="fas fa-code-branch"></i>
+                <span>Repo Intelligence Agent</span>
+            </a>
+            <div class="nav-menu">
+                <a href="/chat"><i class="fas fa-comments"></i> Chat</a>
+                <a href="/scan"><i class="fas fa-radar"></i> Scan</a>
+                <a href="/state"><i class="fas fa-chart-bar"></i> State</a>
+                <a href="/vulnerabilities" class="active"><i class="fas fa-shield-alt"></i> Vulnerabilities</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1rem;">
+        <div class="header-section" style="border-radius: 8px;">
+            <div style="padding: 0 2rem;">
+                <h1 style="margin:0; font-size: 2rem;"><i class="fas fa-shield-alt"></i> Vulnerability Detection</h1>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">Real-time security analysis across all repositories</p>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Analyzing vulnerabilities...</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <!-- Global Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card card bg-danger text-white">
+                        <div class="card-body">
+                            <h3 id="critical-count">0</h3>
+                            <p class="mb-0">Critical</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card card bg-warning">
+                        <div class="card-body">
+                            <h3 id="high-count">0</h3>
+                            <p class="mb-0">High</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card card bg-info text-white">
+                        <div class="card-body">
+                            <h3 id="medium-count">0</h3>
+                            <p class="mb-0">Medium</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card card bg-success text-white">
+                        <div class="card-body">
+                            <h3 id="safe-count">0</h3>
+                            <p class="mb-0">Safe</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="export-buttons mb-4">
+                <button class="btn btn-primary" onclick="exportReport('csv')">
+                    <i class="fas fa-file-csv"></i> Export CSV
+                </button>
+                <button class="btn btn-success" onclick="exportReport('excel')">
+                    <i class="fas fa-file-excel"></i> Export Excel
+                </button>
+                <button class="btn btn-info" onclick="exportReport('json')">
+                    <i class="fas fa-file-code"></i> Export JSON
+                </button>
+                <button class="btn btn-secondary" onclick="exportReport('html')">
+                    <i class="fas fa-file-alt"></i> Export HTML
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="mb-4">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" onclick="filterRepos('all')">All</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="filterRepos('critical')">Critical Only</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="filterRepos('vulnerable')">Vulnerable</button>
+                    <button type="button" class="btn btn-outline-success" onclick="filterRepos('safe')">Safe</button>
+                </div>
+            </div>
+
+            <!-- Repository Cards -->
+            <div id="repo-list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allReports = [];
+
+        async function loadVulnerabilities() {
+            try {
+                const response = await fetch('/api/vulnerabilities');
+                const reports = await response.json();
+                allReports = reports;
+                
+                displayStatistics(reports);
+                displayReports(reports);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading vulnerabilities:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div class="alert alert-danger">Failed to load vulnerability data</div>';
+            }
+        }
+
+        function displayStatistics(reports) {
+            let totalCritical = 0, totalHigh = 0, totalMedium = 0, totalSafe = 0;
+            
+            reports.forEach(report => {
+                const stats = report.statistics;
+                totalCritical += stats.criticalCount;
+                totalHigh += stats.highCount;
+                totalMedium += stats.mediumCount;
+                totalSafe += stats.safeDependencies;
+            });
+            
+            document.getElementById('critical-count').textContent = totalCritical;
+            document.getElementById('high-count').textContent = totalHigh;
+            document.getElementById('medium-count').textContent = totalMedium;
+            document.getElementById('safe-count').textContent = totalSafe;
+        }
+
+        function displayReports(reports) {
+            const container = document.getElementById('repo-list');
+            container.innerHTML = '';
+            
+            reports.forEach(report => {
+                const card = createRepoCard(report);
+                container.appendChild(card);
+            });
+        }
+
+        function createRepoCard(report) {
+            const div = document.createElement('div');
+            div.className = 'repo-card';
+            div.dataset.riskLevel = report.riskLevel.toLowerCase();
+            div.dataset.vulnerable = report.statistics.vulnerableDependencies > 0;
+            
+            const stats = report.statistics;
+            const riskPosition = (report.riskScore / 100) * 100;
+            
+            let vulnerableList = '';
+            report.vulnerabilities
+                .filter(v => v.status === 'VULNERABLE')
+                .slice(0, 5)
+                .forEach(vuln => {
+                    vulnerableList += `
+                        <tr>
+                            <td><code>${vuln.groupId}:${vuln.artifactId}</code></td>
+                            <td>${vuln.currentVersion}</td>
+                            <td><span class="badge badge-${vuln.severity.toLowerCase()}">${vuln.severity}</span></td>
+                            <td>${vuln.cveId || 'N/A'}</td>
+                            <td>${vuln.recommendedVersion || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h4><i class="fas fa-folder-open"></i> ${report.repoName}</h4>
+                        <span class="badge bg-${getRiskBadgeColor(report.riskLevel)}">${report.riskLevel} Risk</span>
+                    </div>
+                    <div class="text-end">
+                        <div class="mb-2">
+                            <strong>Risk Score:</strong> 
+                            <span class="badge bg-${getRiskBadgeColor(report.riskLevel)}">${report.riskScore.toFixed(1)}</span>
+                        </div>
+                        <div>
+                            <strong>Health Score:</strong> 
+                            <span class="badge bg-${getHealthBadgeColor(report.healthScore)}">${report.healthScore}/100</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="risk-meter">
+                    <div class="risk-indicator" style="left: ${riskPosition}%"></div>
+                </div>
+                
+                <div class="row mt-3 mb-3">
+                    <div class="col-md-3">
+                        <small class="text-muted">Total Dependencies</small>
+                        <div><strong>${stats.totalDependencies}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted">Vulnerable</small>
+                        <div><strong class="text-danger">${stats.vulnerableDependencies}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted">Critical</small>
+                        <div><strong class="text-danger">${stats.criticalCount}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted">High</small>
+                        <div><strong class="text-warning">${stats.highCount}</strong></div>
+                    </div>
+                </div>
+                
+                ${vulnerableList ? `
+                    <div class="mt-3">
+                        <h6>Top Vulnerabilities:</h6>
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Package</th>
+                                    <th>Version</th>
+                                    <th>Severity</th>
+                                    <th>CVE</th>
+                                    <th>Fix</th>
+                                </tr>
+                            </thead>
+                            <tbody>${vulnerableList}</tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-success"><i class="fas fa-check-circle"></i> No vulnerabilities detected</p>'}
+                
+                ${report.fixAvailable ? `
+                    <button class="btn btn-primary" onclick="generateFix('${report.repoName}')">
+                        <i class="fas fa-tools"></i> Generate Fix
+                    </button>
+                ` : ''}
+                
+                <button class="btn btn-outline-secondary" onclick="viewDetails('${report.repoName}')">
+                    <i class="fas fa-info-circle"></i> View Details
+                </button>
+            `;
+            
+            return div;
+        }
+
+        function getRiskBadgeColor(riskLevel) {
+            const colors = {
+                'critical': 'danger',
+                'high': 'warning',
+                'medium': 'info',
+                'low': 'primary',
+                'safe': 'success'
+            };
+            return colors[riskLevel.toLowerCase()] || 'secondary';
+        }
+
+        function getHealthBadgeColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'primary';
+            if (score >= 40) return 'warning';
+            return 'danger';
+        }
+
+        function filterRepos(filter) {
+            const cards = document.querySelectorAll('.repo-card');
+            
+            cards.forEach(card => {
+                const show = filter === 'all' ||
+                             (filter === 'critical' && card.dataset.riskLevel === 'critical') ||
+                             (filter === 'vulnerable' && card.dataset.vulnerable === 'true') ||
+                             (filter === 'safe' && card.dataset.vulnerable === 'false');
+                
+                card.style.display = show ? 'block' : 'none';
+            });
+            
+            // Update active button
+            document.querySelectorAll('.btn-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        async function generateFix(repoName) {
+            try {
+                const response = await fetch(`/api/vulnerabilities/fix/download/${repoName}`);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${repoName}-vulnerability-fix.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } catch (error) {
+                alert('Failed to generate fix: ' + error.message);
+            }
+        }
+
+        function viewDetails(repoName) {
+            window.location.href = `/vulnerability-details?repo=${encodeURIComponent(repoName)}`;
+        }
+
+        function exportReport(format) {
+            window.open(`/api/vulnerabilities/export/${format}`, '_blank');
+        }
+
+        // Load on page load
+        document.addEventListener('DOMContentLoaded', loadVulnerabilities);
+    </script>
+    </div> <!-- Close container -->
+</body>
+</html>
