@@ -141,6 +141,33 @@
             background: #2563eb;
             color: white;
         }
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .loading-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 1.25rem 1.75rem;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid #e5e7eb;
+        }
+        .loading-text {
+            font-weight: 600;
+            color: #1f2937;
+        }
     </style>
 </head>
 <body>
@@ -182,10 +209,18 @@
             <strong>Every private repo URL needs the token!</strong>
         </div>
 
-        <form method="post" action="/scan">
+        <form id="scanForm" method="post" action="/scan">
             <textarea name="repos" rows="10" placeholder="https://github.com/spring-projects/spring-boot&#10;https://github.com/apache/maven&#10;https://github.com/junit-team/junit5"></textarea>
-            <button type="submit"><i class="fas fa-search"></i> Scan Repositories</button>
+            <button id="scanBtn" type="submit"><i class="fas fa-search"></i> Scan Repositories</button>
         </form>
+
+        <!-- Loading overlay shown during scan -->
+        <div id="loadingOverlay" class="loading-overlay" hidden>
+            <div class="loading-card">
+                <i class="fas fa-spinner fa-spin" style="font-size: 1.25rem; color:#2563eb;"></i>
+                <span class="loading-text">Scanning repositories… please wait</span>
+            </div>
+        </div>
 
         <h4 style="margin-top: 2rem;"><i class="fas fa-code-branch"></i> Examples:</h4>
         <div class="example">https://github.com/spring-projects/spring-boot</div>
@@ -213,6 +248,22 @@
     </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    (function() {
+        const form = document.getElementById('scanForm');
+        const btn = document.getElementById('scanBtn');
+        const overlay = document.getElementById('loadingOverlay');
+
+        if (form && btn && overlay) {
+            form.addEventListener('submit', function() {
+                // Show overlay and disable button with spinner text
+                overlay.hidden = false;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning…';
+            });
+        }
+    })();
+</script>
 </body>
 </html>
 

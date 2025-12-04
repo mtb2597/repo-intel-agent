@@ -178,6 +178,31 @@ public class RepoScanService {
                                     .build());
                         }
                     }
+                } else if (path.endsWith("package-lock.json")) {
+                    // Prefer exact versions from lock file (npm v2/v3 format)
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> lockJson = (Map<String, Object>) new com.fasterxml.jackson.databind.ObjectMapper().readValue(content, Map.class);
+                    Object depsNode = lockJson.get("dependencies");
+                    if (depsNode instanceof Map<?, ?>) {
+                        Map<?, ?> lockDeps = (Map<?, ?>) depsNode;
+                        for (Map.Entry<?, ?> entryDep : lockDeps.entrySet()) {
+                            String name = String.valueOf(entryDep.getKey());
+                            Object val = entryDep.getValue();
+                            if (val instanceof Map<?, ?>) {
+                                Map<?, ?> vmap = (Map<?, ?>) val;
+                                Object verObj = vmap.get("version");
+                                String exactVersion = verObj != null ? verObj.toString() : "";
+                                if (!exactVersion.isEmpty()) {
+                                    deps.add(DependencyInfo.builder()
+                                            .groupId("")
+                                            .artifactId(name)
+                                            .version(exactVersion)
+                                            .scope("npm-lock")
+                                            .build());
+                                }
+                            }
+                        }
+                    }
                 }
             } catch (Exception e) {
                 log.warn("Failed to parse {}: {}", path, e.getMessage());
@@ -193,7 +218,22 @@ public class RepoScanService {
                     + (dep.getScope() != null ? dep.getScope() : "");
             uniqueDeps.putIfAbsent(key, dep);
         }
-        List<DependencyInfo> dedupedDeps = new ArrayList<>(uniqueDeps.values());
+        // Merge: prefer lock file exact versions over package.json ranges for same package
+        Map<String, DependencyInfo> byName = new LinkedHashMap<>();
+        for (DependencyInfo d : uniqueDeps.values()) {
+            String nameKey = (d.getGroupId() != null ? d.getGroupId() : "") + ":" + (d.getArtifactId() != null ? d.getArtifactId() : "");
+            DependencyInfo existing = byName.get(nameKey);
+            if (existing == null) {
+                byName.put(nameKey, d);
+            } else {
+                boolean dIsLock = d.getScope() != null && d.getScope().startsWith("npm-lock");
+                boolean existingIsLock = existing.getScope() != null && existing.getScope().startsWith("npm-lock");
+                if (dIsLock && !existingIsLock) {
+                    byName.put(nameKey, d);
+                }
+            }
+        }
+        List<DependencyInfo> dedupedDeps = new ArrayList<>(byName.values());
 
         repoDependencies.put(repoName, dedupedDeps);
         // JDK version detection from pom.xml (optional, can be enhanced)

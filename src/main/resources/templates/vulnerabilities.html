@@ -198,10 +198,10 @@
             <!-- Filters -->
             <div class="mb-4">
                 <div class="btn-group" role="group">
-                    <button type="button" class="btn btn-outline-primary active" onclick="filterRepos('all')">All</button>
-                    <button type="button" class="btn btn-outline-danger" onclick="filterRepos('critical')">Critical Only</button>
-                    <button type="button" class="btn btn-outline-warning" onclick="filterRepos('vulnerable')">Vulnerable</button>
-                    <button type="button" class="btn btn-outline-success" onclick="filterRepos('safe')">Safe</button>
+                    <button type="button" class="btn btn-outline-primary active" onclick="filterRepos('all', this)">All</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="filterRepos('critical', this)">Critical Only</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="filterRepos('vulnerable', this)">Vulnerable</button>
+                    <button type="button" class="btn btn-outline-success" onclick="filterRepos('safe', this)">Safe</button>
                 </div>
             </div>
 
@@ -263,9 +263,11 @@
             const div = document.createElement('div');
             div.className = 'repo-card';
             div.dataset.riskLevel = report.riskLevel.toLowerCase();
-            div.dataset.vulnerable = report.statistics.vulnerableDependencies > 0;
+            const stats = report.statistics || { vulnerableDependencies: 0, criticalCount: 0, totalDependencies: 0 };
+            div.dataset.vulnerable = (stats.vulnerableDependencies > 0).toString();
+            div.dataset.critical = (stats.criticalCount > 0).toString();
+            div.dataset.safe = (stats.vulnerableDependencies === 0).toString();
             
-            const stats = report.statistics;
             const riskPosition = (report.riskScore / 100) * 100;
             
             let vulnerableList = '';
@@ -375,23 +377,26 @@
             return 'danger';
         }
 
-        function filterRepos(filter) {
+        function filterRepos(filter, btn) {
             const cards = document.querySelectorAll('.repo-card');
-            
+
             cards.forEach(card => {
+                const isVulnerable = (card.dataset.vulnerable || 'false') === 'true';
+                const hasCritical = (card.dataset.critical || 'false') === 'true';
+                const isSafe = (card.dataset.safe || 'false') === 'true';
                 const show = filter === 'all' ||
-                             (filter === 'critical' && card.dataset.riskLevel === 'critical') ||
-                             (filter === 'vulnerable' && card.dataset.vulnerable === 'true') ||
-                             (filter === 'safe' && card.dataset.vulnerable === 'false');
-                
+                             (filter === 'critical' && hasCritical) ||
+                             (filter === 'vulnerable' && isVulnerable) ||
+                             (filter === 'safe' && isSafe);
+
                 card.style.display = show ? 'block' : 'none';
             });
-            
+
             // Update active button
-            document.querySelectorAll('.btn-group button').forEach(btn => {
-                btn.classList.remove('active');
+            document.querySelectorAll('.btn-group button').forEach(b => {
+                b.classList.remove('active');
             });
-            event.target.classList.add('active');
+            if (btn) btn.classList.add('active');
         }
 
         async function generateFix(repoName) {

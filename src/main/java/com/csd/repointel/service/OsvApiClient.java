@@ -13,7 +13,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Client for OSV.dev (Open Source Vulnerabilities) API.
@@ -54,8 +53,24 @@ public class OsvApiClient {
             log.debug("Skipping OSV query for {}:{} - version is null or unresolved: {}", groupId, artifactId, version);
             return Collections.emptyList();
         }
+        // Normalize npm semver prefixes like ^ or ~
+        String normalizedVersion = version.trim();
+        if (normalizedVersion.startsWith("^") || normalizedVersion.startsWith("~")) {
+            normalizedVersion = normalizedVersion.substring(1);
+        }
 
-        String cacheKey = groupId + ":" + artifactId + ":" + version;
+        String ecosystem;
+        String packageName;
+        boolean isNpm = (groupId == null || groupId.isBlank());
+        if (isNpm) {
+            ecosystem = "npm";
+            packageName = artifactId; // npm uses package name only
+        } else {
+            ecosystem = "Maven";
+            packageName = groupId + ":" + artifactId;
+        }
+
+        String cacheKey = packageName + ":" + normalizedVersion + ":" + ecosystem;
         
         // Check cache first
         if (cache.containsKey(cacheKey)) {
@@ -64,19 +79,23 @@ public class OsvApiClient {
         }
 
         try {
-            log.info("Querying OSV.dev for vulnerabilities: {}:{}:{}", groupId, artifactId, version);
+            log.info("Querying OSV.dev for vulnerabilities: {} (ecosystem {}), version {}", packageName, ecosystem, normalizedVersion);
             
             // Build request payload for Maven ecosystem
             // OSV uses "Maven" ecosystem with "groupId:artifactId" as package name
             Map<String, Object> request = new HashMap<>();
-            request.put("version", version);
+            request.put("version", normalizedVersion);
             
             Map<String, String> packageInfo = new HashMap<>();
-            packageInfo.put("name", groupId + ":" + artifactId);
-            packageInfo.put("ecosystem", "Maven");
+            packageInfo.put("name", packageName);
+            packageInfo.put("ecosystem", ecosystem);
             request.put("package", packageInfo);
 
             // Make API call
+            final String pkgNameFinal = packageName;
+            final String ecosystemFinal = ecosystem;
+            final String versionFinal = normalizedVersion;
+
             String response = webClient.post()
                     .uri("/v1/query")
                     .bodyValue(request)
@@ -84,25 +103,25 @@ public class OsvApiClient {
                     .bodyToMono(String.class)
                     .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
                     .onErrorResume(e -> {
-                        log.error("OSV API error for {}:{}:{} - {}", groupId, artifactId, version, e.getMessage());
+                        log.error("OSV API error for {} ({}:{}): {}", pkgNameFinal, ecosystemFinal, versionFinal, e.getMessage());
                         return Mono.just("{\"vulns\":[]}");
                     })
                     .block();
 
             // Parse response
-            List<CveVulnerabilityRecord> vulnerabilities = parseOsvResponse(response, groupId, artifactId);
+            List<CveVulnerabilityRecord> vulnerabilities = parseOsvResponse(response, isNpm ? "" : groupId, artifactId, normalizedVersion);
             
             // Cache the result
             cache.put(cacheKey, vulnerabilities);
             
             if (!vulnerabilities.isEmpty()) {
-                log.info("Found {} vulnerabilities for {}:{}:{}", vulnerabilities.size(), groupId, artifactId, version);
+                log.info("Found {} vulnerabilities for {} (ecosystem {}):{}", vulnerabilities.size(), packageName, ecosystem, normalizedVersion);
             }
             
             return vulnerabilities;
             
         } catch (Exception e) {
-            log.error("Failed to query OSV.dev for {}:{}:{}", groupId, artifactId, version, e);
+            log.error("Failed to query OSV.dev for {} (ecosystem {}):{}", packageName, ecosystem, normalizedVersion, e);
             return Collections.emptyList();
         }
     }
@@ -110,7 +129,7 @@ public class OsvApiClient {
     /**
      * Parse OSV.dev API response and convert to our internal CVE record format.
      */
-    private List<CveVulnerabilityRecord> parseOsvResponse(String jsonResponse, String groupId, String artifactId) {
+    private List<CveVulnerabilityRecord> parseOsvResponse(String jsonResponse, String groupId, String artifactId, String installedVersion) {
         List<CveVulnerabilityRecord> records = new ArrayList<>();
         
         try {
@@ -141,8 +160,8 @@ public class OsvApiClient {
                     // Extract affected version ranges
                     List<String> affectedVersions = extractAffectedVersions(vuln);
                     
-                    // Extract fixed version
-                    String fixedVersion = extractFixedVersion(vuln);
+                    // Extract fixed version at or above installed version (avoid downgrades)
+                    String fixedVersion = extractFixedVersionAtOrAbove(vuln, installedVersion);
                     
                     // Extract references
                     List<String> references = extractReferences(vuln);
@@ -153,7 +172,7 @@ public class OsvApiClient {
                     // Build solution message
                     String solution = fixedVersion != null 
                         ? "Upgrade to version " + fixedVersion + " or later"
-                        : "Check " + id + " for recommended fixes";
+                        : "No safe fix at or above installed version; check advisory for your major branch.";
                     
                     // Build CVE record
                     CveVulnerabilityRecord record = CveVulnerabilityRecord.builder()
@@ -274,11 +293,11 @@ public class OsvApiClient {
     }
 
     /**
-     * Extract the fixed/safe version from OSV vulnerability data.
-     * Returns the earliest fixed version mentioned in the vulnerability.
+     * Extract the fixed/safe version from OSV vulnerability data that is not lower than the installed version.
+     * Returns the minimal fixed version that is >= installedVersion. If none, returns null.
      */
-    private String extractFixedVersion(JsonNode vuln) {
-        String earliestFixed = null;
+    private String extractFixedVersionAtOrAbove(JsonNode vuln, String installedVersion) {
+        String bestCandidate = null;
         
         if (!vuln.has("affected")) {
             return null;
@@ -293,9 +312,13 @@ public class OsvApiClient {
                             for (JsonNode event : range.get("events")) {
                                 if (event.has("fixed")) {
                                     String fixed = event.get("fixed").asText();
-                                    // Keep the earliest (lowest) fixed version
-                                    if (earliestFixed == null || compareVersions(fixed, earliestFixed) < 0) {
-                                        earliestFixed = fixed;
+                                    // Only consider fixes that are >= installed version to avoid downgrades
+                                    if (installedVersion != null && compareVersions(fixed, installedVersion) < 0) {
+                                        continue;
+                                    }
+                                    // Choose the minimal fix that is >= installedVersion
+                                    if (bestCandidate == null || compareVersions(fixed, bestCandidate) < 0) {
+                                        bestCandidate = fixed;
                                     }
                                 }
                             }
@@ -305,7 +328,7 @@ public class OsvApiClient {
             }
         }
         
-        return earliestFixed;
+        return bestCandidate;
     }
     
     /**

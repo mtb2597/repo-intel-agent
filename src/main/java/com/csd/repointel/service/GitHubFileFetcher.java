@@ -13,7 +13,7 @@ public class GitHubFileFetcher {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     /**
-     * Fetches all pom.xml and package.json files from a GitHub repo using the GitHub API.
+     * Fetches all pom.xml, package.json and package-lock.json files from a GitHub repo using the GitHub API.
      * @param owner GitHub repo owner
      * @param repo GitHub repo name
      * @param branch Branch name (e.g., "main" or "master")
@@ -54,7 +54,7 @@ public class GitHubFileFetcher {
             if (tree == null || !tree.isArray()) throw new IOException("Invalid tree response");
             for (JsonNode node : tree) {
                 String path = node.get("path").asText();
-                if (path.endsWith("pom.xml") || path.endsWith("package.json")) {
+                if (path.endsWith("pom.xml") || path.endsWith("package.json") || path.endsWith("package-lock.json")) {
                     String rawUrl = String.format("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, effectiveBranch, path);
                     Request fileRequest = new Request.Builder()
                             .url(rawUrl)
